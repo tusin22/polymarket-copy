@@ -69,11 +69,16 @@ CLOB_WS_URL = 'wss://ws-subscriptions-clob.polymarket.com/ws'
 USDC_CONTRACT_ADDRESS = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
 ```
 
-#### Build and start
+#### Build and start (safe by default)
 ```bash
 npm run build
 npm run health-check  # Verify configuration
-npm start             # Start trading
+npm run start:preview # Safe mode (no live BUY/SELL/MERGE orders)
+```
+
+When you are ready for live execution:
+```bash
+npm run start:live    # Live mode (real order execution)
 ```
 
 **📖 For detailed setup instructions, see [Getting Started Guide](./docs/GETTING_STARTED.md)**

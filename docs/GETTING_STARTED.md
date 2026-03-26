@@ -62,8 +62,8 @@ npm run health-check
 ### Step 4: Start Trading
 
 ```bash
-# Start the bot
-npm start
+# Start safely (dry-run, no live orders)
+npm run start:preview
 ```
 
 That's it! Your bot is now running and will copy trades automatically.
@@ -226,8 +226,8 @@ Polymarket API: ✅ API responding
 
 🎉 All Systems Operational!
 
-You're ready to start trading:
-   npm start
+You're ready to start safely:
+   npm run start:preview
 ```
 
 **If you see errors,** the health check will tell you exactly what's wrong and how to fix it!
@@ -239,7 +239,7 @@ You're ready to start trading:
 Once health check passes:
 
 ```bash
-npm start
+npm run start:preview
 ```
 
 **What you'll see:**
@@ -299,12 +299,12 @@ Press `Ctrl+C` to stop the bot immediately. It will gracefully shut down and clo
 
 ```bash
 # Setup and configuration
-npm run setup           # Interactive setup wizard
 npm run health-check    # Verify everything works
 
 # Running the bot
 npm run build          # Compile TypeScript
-npm start              # Start the bot
+npm run start:preview  # Start in safe preview mode
+npm run start:live     # Start with live execution enabled
 npm run dev            # Run in development mode
 
 # Monitoring and stats
@@ -324,7 +324,7 @@ npm run simulate       # Backtest strategies
 ### Bot won't start
 
 **Error: "USER_ADDRESSES is not defined"**
-- Run `npm run setup` to create your .env file
+- Run `cp .env.example .env` and fill required values
 - Or manually create .env with all required variables
 
 **Error: "MongoDB connection failed"**
@@ -404,7 +404,7 @@ npm run build
 npm run health-check
 
 # 3. Go live!
-npm start
+npm run start:live
 ```
 
 **Happy trading! 🚀**
@@ -412,4 +412,3 @@ npm start
 ---
 
 **Disclaimer:** This software is for educational purposes. Trading involves risk of loss. The developers are not responsible for any financial losses. Only invest what you can afford to lose.
-
