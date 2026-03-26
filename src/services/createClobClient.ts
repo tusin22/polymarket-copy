@@ -49,16 +49,20 @@ const createClobClient = async (): Promise<ClobClient> => {
     // Suppress noisy SDK output only during key provisioning.
     const originalConsoleLog = console.log;
     const originalConsoleError = console.error;
-    console.log = function () {};
-    console.error = function () {};
 
-    let creds = await clobClient.createApiKey();
-    if (!creds.key) {
-        creds = await clobClient.deriveApiKey();
+    let creds;
+    try {
+        console.log = function () {};
+        console.error = function () {};
+
+        creds = await clobClient.createApiKey();
+        if (!creds.key) {
+            creds = await clobClient.deriveApiKey();
+        }
+    } finally {
+        console.log = originalConsoleLog;
+        console.error = originalConsoleError;
     }
-
-    console.log = originalConsoleLog;
-    console.error = originalConsoleError;
 
     clobClient = new ClobClient(
         host,
