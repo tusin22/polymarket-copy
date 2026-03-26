@@ -117,6 +117,26 @@ const validateNumericConfig = (): void => {
 };
 
 /**
+ * Validate boolean-like configuration values
+ */
+const validateBooleanConfig = (): void => {
+    const booleanKeys = ['PREVIEW_MODE', 'TRADE_AGGREGATION_ENABLED'];
+
+    for (const key of booleanKeys) {
+        const value = process.env[key];
+        if (value === undefined || value === '') {
+            continue;
+        }
+
+        if (value !== 'true' && value !== 'false') {
+            throw new Error(
+                `Invalid ${key}: ${value}. Must be "true" or "false" (lowercase).`
+            );
+        }
+    }
+};
+
+/**
  * Validate URL formats
  */
 const validateUrls = (): void => {
@@ -173,6 +193,7 @@ const validateUrls = (): void => {
 validateRequiredEnv();
 validateAddresses();
 validateNumericConfig();
+validateBooleanConfig();
 validateUrls();
 
 // Parse USER_ADDRESSES: supports both comma-separated string and JSON array
@@ -345,7 +366,8 @@ export const ENV = {
         process.env.TRADE_AGGREGATION_WINDOW_SECONDS || '300',
         10
     ), // 5 minutes default
-    PREVIEW_MODE: process.env.PREVIEW_MODE === 'true',
+    // Safety-first default: preview mode stays enabled unless explicitly set to false.
+    PREVIEW_MODE: process.env.PREVIEW_MODE !== 'false',
     MONGO_URI: process.env.MONGO_URI as string,
     RPC_URL: process.env.RPC_URL as string,
     USDC_CONTRACT_ADDRESS: process.env.USDC_CONTRACT_ADDRESS as string,
