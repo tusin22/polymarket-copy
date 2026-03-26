@@ -1,6 +1,6 @@
 import connectDB, { closeDB } from './config/db';
 import { ENV } from './config/env';
-import createClobClient from './utils/createClobClient';
+import createClobClient from './services/createClobClient';
 import tradeExecutor, { stopTradeExecutor } from './services/tradeExecutor';
 import tradeMonitor, { stopTradeMonitor } from './services/tradeMonitor';
 import Logger from './utils/logger';
