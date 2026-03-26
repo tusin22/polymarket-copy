@@ -2,6 +2,7 @@ import { ENV } from '../config/env';
 import { getUserActivityModel, getUserPositionModel } from '../models/userHistory';
 import fetchData from '../utils/fetchData';
 import Logger from '../utils/logger';
+import { isActivityTooOld } from '../utils/activityAge';
 
 const USER_ADDRESSES = ENV.USER_ADDRESSES;
 const TOO_OLD_TIMESTAMP = ENV.TOO_OLD_TIMESTAMP;
@@ -119,7 +120,7 @@ const fetchTradeData = async () => {
             // Process each activity
             for (const activity of activities) {
                 // Skip if too old
-                if (activity.timestamp < TOO_OLD_TIMESTAMP) {
+                if (isActivityTooOld(activity.timestamp, TOO_OLD_TIMESTAMP)) {
                     continue;
                 }
 
