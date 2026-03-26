@@ -21,7 +21,7 @@ console.log('━━━━━━━━━━━━━━━━━━━━━━�
 console.log(`${colors.reset}\n`);
 
 console.log(`${colors.yellow}${colors.bright}📖 GETTING STARTED${colors.reset}\n`);
-console.log(`  ${colors.green}npm run setup${colors.reset}          Interactive configuration wizard`);
+console.log(`  ${colors.green}cp .env.example .env${colors.reset}     Create your local configuration file`);
 console.log(`  ${colors.green}npm run health-check${colors.reset}   Verify everything is working`);
 console.log(`  ${colors.green}npm run build${colors.reset}          Compile TypeScript to JavaScript`);
 console.log(`  ${colors.green}npm start${colors.reset}              Start the trading bot`);
@@ -78,11 +78,10 @@ console.log('');
 
 console.log(`${colors.blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
 console.log(`${colors.yellow}💡 Quick Tips:${colors.reset}\n`);
-console.log('  • New user? Start with: npm run setup');
+console.log('  • New user? Start with: cp .env.example .env');
 console.log('  • Before trading: npm run health-check');
 console.log('  • Test strategies: npm run simulate');
 console.log('  • Find traders: npm run find-traders');
 console.log('  • Emergency stop: Press Ctrl+C');
 console.log('');
 console.log(`${colors.yellow}⚠️  Always start with small amounts and monitor regularly!${colors.reset}\n`);
-

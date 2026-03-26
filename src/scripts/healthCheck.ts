@@ -110,8 +110,8 @@ const main = async () => {
         console.error(`\n${colors.red}${colors.bright}❌ Health Check Error${colors.reset}\n`);
         if (error instanceof Error) {
             console.error(`${error.message}\n`);
-            console.error(`${colors.yellow}💡 Tip: Run the setup wizard to reconfigure:${colors.reset}`);
-            console.error(`   ${colors.cyan}npm run setup${colors.reset}\n`);
+            console.error(`${colors.yellow}💡 Tip: recreate your local config from template:${colors.reset}`);
+            console.error(`   ${colors.cyan}cp .env.example .env${colors.reset}\n`);
         } else {
             console.error(error);
         }

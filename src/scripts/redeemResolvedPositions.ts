@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { ENV } from '../config/env';
 import fetchData from '../utils/fetchData';
+import { requireExplicitOnchainConfirmation } from './securityGuard';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
 const PRIVATE_KEY = ENV.PRIVATE_KEY;
@@ -121,6 +122,8 @@ const logPositionHeader = (position: Position, index: number, total: number) => 
 };
 
 const main = async () => {
+    requireExplicitOnchainConfirmation('redeemResolvedPositions');
+
     console.log('🚀 Redeeming resolved positions');
     console.log('════════════════════════════════════════════════════');
     console.log(`Wallet: ${PROXY_WALLET}`);

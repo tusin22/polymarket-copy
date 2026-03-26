@@ -7,6 +7,7 @@ import { calculateOrderSize, getTradeMultiplier } from '../config/copyStrategy';
 
 const RETRY_LIMIT = ENV.RETRY_LIMIT;
 const COPY_STRATEGY_CONFIG = ENV.COPY_STRATEGY_CONFIG;
+const PREVIEW_MODE = ENV.PREVIEW_MODE;
 
 // Legacy parameters (for backward compatibility in SELL logic)
 const TRADE_MULTIPLIER = ENV.TRADE_MULTIPLIER;
@@ -74,6 +75,15 @@ const postOrder = async (
     userAddress: string
 ) => {
     const UserActivity = getUserActivityModel(userAddress);
+
+    if (PREVIEW_MODE) {
+        Logger.warning(
+            `🛑 PREVIEW_MODE ativo: bloqueando execução LIVE (${condition.toUpperCase()}) para ${trade.asset}`
+        );
+        await UserActivity.updateOne({ _id: trade._id }, { bot: true });
+        return;
+    }
+
     //Merge strategy
     if (condition === 'merge') {
         Logger.info('Executing MERGE strategy...');
