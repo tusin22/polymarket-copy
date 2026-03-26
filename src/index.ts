@@ -8,6 +8,7 @@ import { performHealthCheck, logHealthCheck } from './utils/healthCheck';
 
 const USER_ADDRESSES = ENV.USER_ADDRESSES;
 const PROXY_WALLET = ENV.PROXY_WALLET;
+const PREVIEW_MODE = ENV.PREVIEW_MODE;
 
 // Graceful shutdown handler
 let isShuttingDown = false;
@@ -76,6 +77,11 @@ export const main = async () => {
         
         await connectDB();
         Logger.startup(USER_ADDRESSES, PROXY_WALLET);
+        if (PREVIEW_MODE) {
+            Logger.warning('PREVIEW_MODE=true: BUY/SELL/MERGE estão bloqueados (dry-run real).');
+        } else {
+            Logger.warning('PREVIEW_MODE=false: execução LIVE habilitada para ordens de trading.');
+        }
 
         // Perform initial health check
         Logger.info('Performing initial health check...');

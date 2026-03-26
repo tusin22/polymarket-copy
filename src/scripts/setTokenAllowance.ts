@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { getContractConfig } from '@polymarket/clob-client';
 import { ENV } from '../config/env';
+import { requireExplicitOnchainConfirmation } from './securityGuard';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
 const PRIVATE_KEY = ENV.PRIVATE_KEY;
@@ -20,6 +21,8 @@ const CTF_ABI = [
 ];
 
 async function setTokenAllowance() {
+    requireExplicitOnchainConfirmation('setTokenAllowance');
+
     console.log('🔑 Setting Token Allowance for Polymarket Trading');
     console.log('═══════════════════════════════════════════════\n');
 

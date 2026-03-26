@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { ENV } from '../config/env';
 import fetchData from '../utils/fetchData';
+import { requireExplicitOnchainConfirmation } from './securityGuard';
 
 const PRIVATE_KEY = ENV.PRIVATE_KEY;
 const RPC_URL = ENV.RPC_URL;
@@ -26,6 +27,8 @@ interface Position {
 }
 
 async function transferPositions() {
+    requireExplicitOnchainConfirmation('transferPositionsToGnosisSafe');
+
     console.log('\n🔄 TRANSFERRING POSITIONS FROM EOA TO GNOSIS SAFE\n');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 

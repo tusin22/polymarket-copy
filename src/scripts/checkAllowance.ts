@@ -179,6 +179,7 @@ const syncPolymarketAllowanceCache = async (
 };
 
 async function checkAndSetAllowance() {
+    console.log('🔒 Security note: this script is read-only (no on-chain state changes).\n');
     console.log('🔍 Checking USDC balance and allowance...\n');
 
     // Connect to Polygon

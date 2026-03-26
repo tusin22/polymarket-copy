@@ -4,7 +4,6 @@
     "main": "index.js",
     "scripts": {
         "help": "ts-node src/scripts/help.ts",
-        "setup": "ts-node src/scripts/setup.ts",
         "build": "tsc",
         "start": "node dist/index.js",
         "dev": "ts-node src/index.ts",

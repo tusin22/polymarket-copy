@@ -35,8 +35,8 @@ const validateRequiredEnv = (): void => {
         console.error('\n❌ Configuration Error: Missing required environment variables\n');
         console.error(`Missing variables: ${missing.join(', ')}\n`);
         console.error('🔧 Quick fix:');
-        console.error('   1. Run the setup wizard: npm run setup');
-        console.error('   2. Or manually create .env file with all required variables\n');
+        console.error('   1. Create a local .env file from .env.example');
+        console.error('   2. Fill all required variables with your own values\n');
         console.error('📖 See docs/QUICK_START.md for detailed instructions\n');
         throw new Error(
             `Missing required environment variables: ${missing.join(', ')}`
@@ -345,6 +345,7 @@ export const ENV = {
         process.env.TRADE_AGGREGATION_WINDOW_SECONDS || '300',
         10
     ), // 5 minutes default
+    PREVIEW_MODE: process.env.PREVIEW_MODE === 'true',
     MONGO_URI: process.env.MONGO_URI as string,
     RPC_URL: process.env.RPC_URL as string,
     USDC_CONTRACT_ADDRESS: process.env.USDC_CONTRACT_ADDRESS as string,
