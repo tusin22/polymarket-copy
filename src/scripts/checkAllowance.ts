@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import { AssetType, ClobClient, getContractConfig } from '@polymarket/clob-client';
 import { SignatureType } from '@polymarket/order-utils';
 import { ENV } from '../config/env';
+import { requireExplicitOnchainConfirmation } from './securityGuard';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
 const PRIVATE_KEY = ENV.PRIVATE_KEY;
@@ -179,7 +180,7 @@ const syncPolymarketAllowanceCache = async (
 };
 
 async function checkAndSetAllowance() {
-    console.log('🔒 Security note: this script is read-only (no on-chain state changes).\n');
+    console.log('🔒 Security note: this script starts in read-only mode.\n');
     console.log('🔍 Checking USDC balance and allowance...\n');
 
     // Connect to Polygon
@@ -264,6 +265,7 @@ async function checkAndSetAllowance() {
         if (polymarketAllowance.lt(polymarketBalance) || polymarketAllowance.isZero()) {
             console.log('⚠️  Allowance is insufficient or zero!');
             console.log('📝 Setting unlimited allowance for Polymarket...\n');
+            requireExplicitOnchainConfirmation('checkAllowance:setUnlimitedAllowance');
 
             // Approve unlimited amount (max uint256)
             const maxAllowance = ethers.constants.MaxUint256;
