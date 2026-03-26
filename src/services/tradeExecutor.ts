@@ -41,27 +41,67 @@ interface AggregatedTrade {
 // Buffer for aggregating trades
 const tradeAggregationBuffer: Map<string, AggregatedTrade> = new Map();
 
-const readTempTrades = async (): Promise<TradeWithUser[]> => {
-    const allTrades: TradeWithUser[] = [];
+type UserActivityModelLike = {
+    findOneAndUpdate: (
+        filter: Record<string, unknown>,
+        update: Record<string, unknown>,
+        options: Record<string, unknown>
+    ) => {
+        lean: () => {
+            exec: () => Promise<UserActivityInterface | null>;
+        };
+    };
+};
 
-    for (const { address, model } of userActivityModels) {
-        // Only get trades that haven't been processed yet (bot: false AND botExcutedTime: 0)
-        // This prevents processing the same trade multiple times
-        const trades = await model
-            .find({
-                $and: [{ type: 'TRADE' }, { bot: false }, { botExcutedTime: 0 }],
-            })
-            .exec();
+type UserActivityModelEntry = {
+    address: string;
+    model: UserActivityModelLike;
+};
 
-        const tradesWithUser = trades.map((trade) => ({
-            ...(trade.toObject() as UserActivityInterface),
-            userAddress: address,
-        }));
+const claimNextPendingTrade = async (
+    modelEntry: UserActivityModelEntry
+): Promise<TradeWithUser | null> => {
+    const claimedTrade = await modelEntry.model
+        .findOneAndUpdate(
+            {
+                type: 'TRADE',
+                bot: false,
+                botExcutedTime: 0,
+            },
+            {
+                $set: {
+                    botExcutedTime: 1,
+                },
+            },
+            {
+                sort: { timestamp: 1, _id: 1 },
+                new: true,
+            }
+        )
+        .lean()
+        .exec();
 
-        allTrades.push(...tradesWithUser);
+    if (!claimedTrade) {
+        return null;
     }
 
-    return allTrades;
+    return {
+        ...(claimedTrade as UserActivityInterface),
+        userAddress: modelEntry.address,
+    };
+};
+
+export const claimNextExecutableTrade = async (
+    models: UserActivityModelEntry[] = userActivityModels as UserActivityModelEntry[]
+): Promise<TradeWithUser | null> => {
+    for (const modelEntry of models) {
+        const claimedTrade = await claimNextPendingTrade(modelEntry);
+        if (claimedTrade) {
+            return claimedTrade;
+        }
+    }
+
+    return null;
 };
 
 /**
@@ -146,10 +186,6 @@ const getReadyAggregatedTrades = (): AggregatedTrade[] => {
 
 const doTrading = async (clobClient: ClobClient, trades: TradeWithUser[]) => {
     for (const trade of trades) {
-        // Mark trade as being processed immediately to prevent duplicate processing
-        const UserActivity = getUserActivityModel(trade.userAddress);
-        await UserActivity.updateOne({ _id: trade._id }, { $set: { botExcutedTime: 1 } });
-
         Logger.trade(trade.userAddress, trade.side || 'UNKNOWN', {
             asset: trade.asset,
             side: trade.side,
@@ -209,12 +245,6 @@ const doAggregatedTrading = async (clobClient: ClobClient, aggregatedTrades: Agg
         Logger.info(`Side: ${agg.side}`);
         Logger.info(`Total volume: $${agg.totalUsdcSize.toFixed(2)}`);
         Logger.info(`Average price: $${agg.averagePrice.toFixed(4)}`);
-
-        // Mark all individual trades as being processed
-        for (const trade of agg.trades) {
-            const UserActivity = getUserActivityModel(trade.userAddress);
-            await UserActivity.updateOne({ _id: trade._id }, { $set: { botExcutedTime: 1 } });
-        }
 
         const my_positions: UserPositionInterface[] = await fetchData(
             `https://data-api.polymarket.com/positions?user=${PROXY_WALLET}`
@@ -284,30 +314,28 @@ const tradeExecutor = async (clobClient: ClobClient) => {
 
     let lastCheck = Date.now();
     while (isRunning) {
-        const trades = await readTempTrades();
+        const claimedTrade = await claimNextExecutableTrade();
 
         if (TRADE_AGGREGATION_ENABLED) {
             // Process with aggregation logic
-            if (trades.length > 0) {
+            if (claimedTrade) {
                 Logger.clearLine();
-                Logger.info(
-                    `📥 ${trades.length} new trade${trades.length > 1 ? 's' : ''} detected`
-                );
+                Logger.info(`📥 1 new trade detected`);
 
-                // Add trades to aggregation buffer
-                for (const trade of trades) {
-                    // Only aggregate BUY trades below minimum threshold
-                    if (trade.side === 'BUY' && trade.usdcSize < TRADE_AGGREGATION_MIN_TOTAL_USD) {
-                        Logger.info(
-                            `Adding $${trade.usdcSize.toFixed(2)} ${trade.side} trade to aggregation buffer for ${trade.slug || trade.asset}`
-                        );
-                        addToAggregationBuffer(trade);
-                    } else {
-                        // Execute large trades immediately (not aggregated)
-                        Logger.clearLine();
-                        Logger.header(`⚡ IMMEDIATE TRADE (above threshold)`);
-                        await doTrading(clobClient, [trade]);
-                    }
+                // Only aggregate BUY trades below minimum threshold
+                if (
+                    claimedTrade.side === 'BUY' &&
+                    claimedTrade.usdcSize < TRADE_AGGREGATION_MIN_TOTAL_USD
+                ) {
+                    Logger.info(
+                        `Adding $${claimedTrade.usdcSize.toFixed(2)} ${claimedTrade.side} trade to aggregation buffer for ${claimedTrade.slug || claimedTrade.asset}`
+                    );
+                    addToAggregationBuffer(claimedTrade);
+                } else {
+                    // Execute large trades immediately (not aggregated)
+                    Logger.clearLine();
+                    Logger.header(`⚡ IMMEDIATE TRADE (above threshold)`);
+                    await doTrading(clobClient, [claimedTrade]);
                 }
                 lastCheck = Date.now();
             }
@@ -324,7 +352,7 @@ const tradeExecutor = async (clobClient: ClobClient) => {
             }
 
             // Update waiting message
-            if (trades.length === 0 && readyAggregations.length === 0) {
+            if (!claimedTrade && readyAggregations.length === 0) {
                 if (Date.now() - lastCheck > 300) {
                     const bufferedCount = tradeAggregationBuffer.size;
                     if (bufferedCount > 0) {
@@ -340,12 +368,10 @@ const tradeExecutor = async (clobClient: ClobClient) => {
             }
         } else {
             // Original non-aggregation logic
-            if (trades.length > 0) {
+            if (claimedTrade) {
                 Logger.clearLine();
-                Logger.header(
-                    `⚡ ${trades.length} NEW TRADE${trades.length > 1 ? 'S' : ''} TO COPY`
-                );
-                await doTrading(clobClient, trades);
+                Logger.header(`⚡ 1 NEW TRADE TO COPY`);
+                await doTrading(clobClient, [claimedTrade]);
                 lastCheck = Date.now();
             } else {
                 // Update waiting message every 300ms for smooth animation
