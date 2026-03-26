@@ -3,6 +3,7 @@ import { getUserActivityModel, getUserPositionModel } from '../models/userHistor
 import fetchData from '../utils/fetchData';
 import Logger from '../utils/logger';
 import { isActivityTooOld } from '../utils/activityAge';
+import { bootstrapAddressActivities, markExistingActivitiesAsProcessed } from './firstRunBootstrap';
 
 const USER_ADDRESSES = ENV.USER_ADDRESSES;
 const TOO_OLD_TIMESTAMP = ENV.TOO_OLD_TIMESTAMP;
@@ -113,55 +114,81 @@ const fetchTradeData = async () => {
             const apiUrl = `https://data-api.polymarket.com/activity?user=${address}&type=TRADE`;
             const activities = await fetchData(apiUrl);
 
-            if (!Array.isArray(activities) || activities.length === 0) {
-                continue;
-            }
+            const addressKey = address.toLowerCase();
+            const isAddressInitialized = initializedAddresses.has(addressKey);
 
-            // Process each activity
-            for (const activity of activities) {
-                // Skip if too old
-                if (isActivityTooOld(activity.timestamp, TOO_OLD_TIMESTAMP)) {
+            if (!isAddressInitialized) {
+                const bootstrapResult = await bootstrapAddressActivities({
+                    activitiesPayload: activities,
+                    UserActivity,
+                    tooOldTimestamp: TOO_OLD_TIMESTAMP,
+                });
+
+                if (!bootstrapResult.initialized) {
+                    Logger.error(
+                        `Invalid activities payload while bootstrapping ${address.slice(0, 6)}...${address.slice(-4)}`
+                    );
                     continue;
                 }
 
-                // Check if this trade already exists in database
-                const existingActivity = await UserActivity.findOne({
-                    transactionHash: activity.transactionHash,
-                }).exec();
-
-                if (existingActivity) {
-                    continue; // Already processed this trade
+                if (bootstrapResult.seededCount > 0) {
+                    Logger.info(
+                        `Initialized baseline with ${bootstrapResult.seededCount} trade(s) for ${address.slice(0, 6)}...${address.slice(-4)}`
+                    );
                 }
 
-                // Save new trade to database
-                const newActivity = new UserActivity({
-                    proxyWallet: activity.proxyWallet,
-                    timestamp: activity.timestamp,
-                    conditionId: activity.conditionId,
-                    type: activity.type,
-                    size: activity.size,
-                    usdcSize: activity.usdcSize,
-                    transactionHash: activity.transactionHash,
-                    price: activity.price,
-                    asset: activity.asset,
-                    side: activity.side,
-                    outcomeIndex: activity.outcomeIndex,
-                    title: activity.title,
-                    slug: activity.slug,
-                    icon: activity.icon,
-                    eventSlug: activity.eventSlug,
-                    outcome: activity.outcome,
-                    name: activity.name,
-                    pseudonym: activity.pseudonym,
-                    bio: activity.bio,
-                    profileImage: activity.profileImage,
-                    profileImageOptimized: activity.profileImageOptimized,
-                    bot: false,
-                    botExcutedTime: 0,
-                });
+                initializedAddresses.add(addressKey);
+            } else if (Array.isArray(activities) && activities.length > 0) {
+                // Process each activity
+                for (const activity of activities) {
+                    // Skip if too old
+                    if (isActivityTooOld(activity.timestamp, TOO_OLD_TIMESTAMP)) {
+                        continue;
+                    }
 
-                await newActivity.save();
-                Logger.info(`New trade detected for ${address.slice(0, 6)}...${address.slice(-4)}`);
+                    // Check if this trade already exists in database
+                    const existingActivity = await UserActivity.findOne({
+                        transactionHash: activity.transactionHash,
+                    }).exec();
+
+                    if (existingActivity) {
+                        continue; // Already processed this trade
+                    }
+
+                    // Save new trade to database
+                    const newActivity = new UserActivity({
+                        proxyWallet: activity.proxyWallet,
+                        timestamp: activity.timestamp,
+                        conditionId: activity.conditionId,
+                        type: activity.type,
+                        size: activity.size,
+                        usdcSize: activity.usdcSize,
+                        transactionHash: activity.transactionHash,
+                        price: activity.price,
+                        asset: activity.asset,
+                        side: activity.side,
+                        outcomeIndex: activity.outcomeIndex,
+                        title: activity.title,
+                        slug: activity.slug,
+                        icon: activity.icon,
+                        eventSlug: activity.eventSlug,
+                        outcome: activity.outcome,
+                        name: activity.name,
+                        pseudonym: activity.pseudonym,
+                        bio: activity.bio,
+                        profileImage: activity.profileImage,
+                        profileImageOptimized: activity.profileImageOptimized,
+                        bot: false,
+                        botExcutedTime: 0,
+                    });
+
+                    await newActivity.save();
+                    Logger.info(`New trade detected for ${address.slice(0, 6)}...${address.slice(-4)}`);
+                }
+            } else if (!Array.isArray(activities)) {
+                Logger.error(
+                    `Invalid activities payload for ${address.slice(0, 6)}...${address.slice(-4)}`
+                );
             }
 
             // Also fetch and update positions
@@ -214,6 +241,8 @@ const fetchTradeData = async () => {
 
 // Track if this is the first run
 let isFirstRun = true;
+// Track first successful baseline initialization per address
+const initializedAddresses = new Set<string>();
 // Track if monitor should continue running
 let isRunning = true;
 
@@ -230,23 +259,16 @@ const tradeMonitor = async () => {
     Logger.success(`Monitoring ${USER_ADDRESSES.length} trader(s) every ${FETCH_INTERVAL}s`);
     Logger.separator();
 
-    // On first run, mark all existing historical trades as already processed
     if (isFirstRun) {
-        Logger.info('First run: marking all historical trades as processed...');
         for (const { address, UserActivity } of userModels) {
-            const count = await UserActivity.updateMany(
-                { bot: false },
-                { $set: { bot: true, botExcutedTime: 999 } }
-            );
-            if (count.modifiedCount > 0) {
+            const modifiedCount = await markExistingActivitiesAsProcessed({ UserActivity });
+            if (modifiedCount > 0) {
                 Logger.info(
-                    `Marked ${count.modifiedCount} historical trades as processed for ${address.slice(0, 6)}...${address.slice(-4)}`
+                    `Marked ${modifiedCount} historical trades as processed for ${address.slice(0, 6)}...${address.slice(-4)}`
                 );
             }
         }
         isFirstRun = false;
-        Logger.success('\nHistorical trades processed. Now monitoring for new trades only.');
-        Logger.separator();
     }
 
     while (isRunning) {
