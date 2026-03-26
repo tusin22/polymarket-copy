@@ -30,10 +30,7 @@ The Polymarket Copy Trading Bot automatically replicates trades from successful 
 
 ### Installation
 
-#### Clone repository
 ```bash
-git clone https://github.com/CryptoVictormt/polymarket-copy-trading-bot
-
 cd polymarket-copy-trading-bot
 ```
 
